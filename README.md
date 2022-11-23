@@ -1,5 +1,8 @@
 # Swapping on Odos
 Свапает в сетях Arbitrum, Optimism, Polygon нужный вам объем на Odos в стейблкоине USDC
+
+Версия Python 3.10
+
   1. Скачайте все файлы
   2. В private_keys.txt добавьте свои private keys от кошельков, на которых есть USDC и эфир или матик на комиссию
   3) Запустите в папке с проектом 
