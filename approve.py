@@ -1,8 +1,12 @@
+import time
+
 from web3 import Web3
 from termcolor import cprint
 import config
 
-
+is_approve_usdc = 0
+is_approve_ausdc = 0
+continue_trans = 0
 gasLimit = 3000000
 def usdc_arb_approve(private_key, gasLimit):
     rpc = config.ARB_RPC
@@ -38,6 +42,9 @@ def usdc_arb_approve(private_key, gasLimit):
     except Exception as error:
         cprint(f'\n>>> Approve USDC | {address_wallet} | {error}', 'red')
 
+    is_approve_usdc = web3.eth.wait_for_transaction_receipt(web3.toHex(tx_token), timeout=120, poll_latency=0.1).status
+
+    return is_approve_usdc
 def usdc_aave_arb_approve(private_key, gasLimit):
     rpc = config.ARB_RPC
     web3 = Web3(Web3.HTTPProvider(rpc))
@@ -71,6 +78,9 @@ def usdc_aave_arb_approve(private_key, gasLimit):
         cprint(f'\n>>> Approve AUSDC | https://arbiscan.io/tx/{web3.toHex(tx_token)} ', 'green')
     except Exception as error:
         cprint(f'\n>>> Approve AUSDC | {address_wallet} | {error}', 'red')
+    is_approve_ausdc = web3.eth.wait_for_transaction_receipt(web3.toHex(tx_token), timeout=120, poll_latency=0.1).status
+
+    return is_approve_ausdc
 
 def usdc_opt_approve(private_key, gasLimit):
     rpc = config.OPT_RPC
@@ -105,6 +115,9 @@ def usdc_opt_approve(private_key, gasLimit):
         cprint(f'\n>>> Approve USDC | https://optimistic.etherscan.io/tx/{web3.toHex(tx_token)} ', 'green')
     except Exception as error:
         cprint(f'\n>>> Approve USDC | {address_wallet} | {error}', 'red')
+    is_approve_usdc = web3.eth.wait_for_transaction_receipt(web3.toHex(tx_token), timeout=120, poll_latency=0.1).status
+
+    return is_approve_usdc
 
 
 def usdc_aave_opt_approve(private_key, gasLimit):
@@ -140,6 +153,9 @@ def usdc_aave_opt_approve(private_key, gasLimit):
         cprint(f'\n>>> Approve AUSDC | https://optimistic.etherscan.io/tx/{web3.toHex(tx_token)} ', 'green')
     except Exception as error:
         cprint(f'\n>>> Approve AUSDC | {address_wallet} | {error}', 'red')
+    is_approve_ausdc = web3.eth.wait_for_transaction_receipt(web3.toHex(tx_token), timeout=120, poll_latency=0.1).status
+
+    return is_approve_ausdc
 
 def usdc_pol_approve(private_key, gasLimit):
     gasLimit = 250000
@@ -164,7 +180,7 @@ def usdc_pol_approve(private_key, gasLimit):
         ).buildTransaction({
             'chainId': web3.eth.chain_id,
             'gas': gasLimit,
-            'gasPrice': web3.toWei('1000', 'gwei'),
+            'gasPrice': web3.toWei('300', 'gwei'),
             'nonce': nonce,
         })
 
@@ -174,6 +190,9 @@ def usdc_pol_approve(private_key, gasLimit):
         cprint(f'\n>>> Approve USDC | https://polygonscan.com/tx/{web3.toHex(tx_token)} ', 'green')
     except Exception as error:
         cprint(f'\n>>> Approve USDC | {address_wallet} | {error}', 'red')
+    is_approve_usdc = web3.eth.wait_for_transaction_receipt(web3.toHex(tx_token), timeout=120, poll_latency=0.1).status
+
+    return is_approve_usdc
 
 def usdc_aave_pol_approve(private_key, gasLimit):
     rpc = config.POL_RPC
@@ -197,7 +216,7 @@ def usdc_aave_pol_approve(private_key, gasLimit):
         ).buildTransaction({
             'chainId': web3.eth.chain_id,
             'gas': gasLimit,
-            'gasPrice': web3.toWei('1000', 'gwei'),
+            'gasPrice': web3.toWei('300', 'gwei'),
             'nonce': nonce,
         })
 
@@ -207,3 +226,6 @@ def usdc_aave_pol_approve(private_key, gasLimit):
         cprint(f'\n>>> Approve AUSDC | https://polygonscan.com/tx/{web3.toHex(tx_token)} ', 'green')
     except Exception as error:
         cprint(f'\n>>> Approve AUSDC | {address_wallet} | {error}', 'red')
+    is_approve_ausdc = web3.eth.wait_for_transaction_receipt(web3.toHex(tx_token), timeout=120, poll_latency=0.1).status
+
+    return is_approve_ausdc
