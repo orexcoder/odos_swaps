@@ -6,7 +6,7 @@ import approve
 from web3 import Web3
 from termcolor import cprint
 
-def swap(swap_amount, chain_selected, odos_swap_contract, path_USDC_AUSDC, path_AUSDC_USDC, private_key, gasLimit, gasPrice):
+def swap(swap_amount, chain_selected, odos_swap_contract, path_USDC_AUSDC, path_AUSDC_USDC, private_key, gasLimit, gasPrice, is_approve):
 
     account = web3.eth.account.privateKeyToAccount(private_key)
     address_wallet = Web3.toChecksumAddress(account.address)
@@ -17,81 +17,130 @@ def swap(swap_amount, chain_selected, odos_swap_contract, path_USDC_AUSDC, path_
     byte_inputs_permit = '0x'
 
     for i in range(swap_amount):
-        nonce = web3.eth.get_transaction_count(address_wallet)
-        usdc_balance = ucdc_contract.functions.balanceOf(address_wallet).call()
-        ausdc_balance = usdc_aave_contract.functions.balanceOf(address_wallet).call()
-        if round(usdc_balance / 1000000, 2) > 0:
-            try:
-                swap_staff_input = [str(usdc_contract_address), usdc_balance,
-                                    executor, byte_inputs_permit]
-                swap_staff_output = [str(usdc_aave_contract_address), 1, str(address_wallet)]
-                contract_txn = contract.functions.swap(
-                    [swap_staff_input],
-                    [swap_staff_output],
-                    usdc_balance,
-                    int(round(usdc_balance * 0.996)),
-                    executor,
-                    path_USDC_AUSDC
-                ).buildTransaction({
-                    'from': address_wallet,
-                    'gas': gasLimit,
-                    'gasPrice': gasPrice,
-                    'nonce': nonce,
-                })
+        if is_approve >= 1:
+            nonce = web3.eth.get_transaction_count(address_wallet)
+            usdc_balance = ucdc_contract.functions.balanceOf(address_wallet).call()
+            ausdc_balance = usdc_aave_contract.functions.balanceOf(address_wallet).call()
+            if round(usdc_balance / 1000000, 2) > 0:
+                try:
+                    swap_staff_input = [str(usdc_contract_address), usdc_balance,
+                                        executor, byte_inputs_permit]
+                    swap_staff_output = [str(usdc_aave_contract_address), 1, str(address_wallet)]
+                    contract_txn = contract.functions.swap(
+                        [swap_staff_input],
+                        [swap_staff_output],
+                        usdc_balance,
+                        int(round(usdc_balance * 0.996)),
+                        executor,
+                        path_USDC_AUSDC
+                    ).buildTransaction({
+                        'from': address_wallet,
+                        'gas': gasLimit,
+                        'gasPrice': gasPrice,
+                        'nonce': nonce,
+                    })
 
-                signed_txn = web3.eth.account.sign_transaction(contract_txn, private_key=private_key)
-                tx_token = web3.eth.send_raw_transaction(signed_txn.rawTransaction)
-                if chain_selected == 'Arbitrum':
-                    cprint(f'\n>>> Swapping {i + 1}| https://arbiscan.io/tx/{web3.toHex(tx_token)} ', 'green')
-                    time.sleep(random.randint(5, 10))
-                elif chain_selected == 'Optimism':
-                    cprint(f'\n>>> Swapping {i + 1}| https://optimistic.etherscan.io/tx/{web3.toHex(tx_token)} ', 'green')
-                    time.sleep(random.randint(5, 10))
-                elif chain_selected == 'Polygon':
-                    cprint(f'\n>>> Swapping {i + 1}| https://polygonscan.com/tx/{web3.toHex(tx_token)} ',
-                           'green')
-                    time.sleep(random.randint(10, 20))
-                else:
-                    cprint('\n>>> Укажите корректную сеть ', 'red')
-            except Exception as error:
-                cprint(f'\n>>> Error with address | {address_wallet} | {error}', 'red')
+                    signed_txn = web3.eth.account.sign_transaction(contract_txn, private_key=private_key)
+                    tx_token = web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+                    if chain_selected == 'Arbitrum':
+                        cprint(f'\n>>> Swapping {i + 1}| https://arbiscan.io/tx/{web3.toHex(tx_token)} ', 'green')
+                        # Прроверяем, выполнена ли транзакция, и только после этого даем разрешение на следующую
+                        is_approve = web3.eth.wait_for_transaction_receipt(web3.toHex(tx_token), timeout=120,
+                                                                           poll_latency=0.1).status
+                        if is_approve == 0:
+                            cprint(
+                                f'\n>>> Transaction failed {i + 1}| https://polygonscan.com/tx/{web3.toHex(tx_token)} ',
+                                'red')
+                        time.sleep(random.randint(5, 10))
+                    elif chain_selected == 'Optimism':
+                        cprint(f'\n>>> Swapping {i + 1}| https://optimistic.etherscan.io/tx/{web3.toHex(tx_token)} ', 'green')
+                        # Прроверяем, выполнена ли транзакция, и только после этого даем разрешение на следующую
+                        is_approve = web3.eth.wait_for_transaction_receipt(web3.toHex(tx_token), timeout=120,
+                                                                           poll_latency=0.1).status
+                        if is_approve == 0:
+                            cprint(
+                                f'\n>>> Transaction failed {i + 1}| https://polygonscan.com/tx/{web3.toHex(tx_token)} ',
+                                'red')
+                        time.sleep(random.randint(10, 20))
+                    elif chain_selected == 'Polygon':
 
+                        cprint(f'\n>>> Swapping {i + 1}| https://polygonscan.com/tx/{web3.toHex(tx_token)} ',
+                               'green')
+
+                        #Прроверяем, выполнена ли транзакция, и только после этого даем разрешение на следующую
+                        is_approve = web3.eth.wait_for_transaction_receipt(web3.toHex(tx_token), timeout=120,
+                                                                                 poll_latency=0.1).status
+                        if is_approve == 0:
+                            cprint(f'\n>>> Transaction failed {i + 1}| https://polygonscan.com/tx/{web3.toHex(tx_token)} ',
+                                   'red')
+                        time.sleep(random.randint(5, 10))
+                    else:
+                        cprint('\n>>> Укажите корректную сеть ', 'red')
+                except Exception as error:
+                    cprint(f'\n>>> Error with address | {address_wallet} | {error}', 'red')
+
+            else:
+                try:
+                    swap_staff_input = [str(usdc_aave_contract_address), ausdc_balance,
+                                        executor, byte_inputs_permit]
+                    swap_staff_output = [str(usdc_contract_address), 1, str(address_wallet)]
+                    contract_txn = contract.functions.swap(
+                        [swap_staff_input],
+                        [swap_staff_output],
+                        ausdc_balance,
+                        int(round(ausdc_balance * 0.996)),
+                        executor,
+                        path_AUSDC_USDC
+                    ).buildTransaction({
+                        'from': address_wallet,
+                        'gas': gasLimit,
+                        'gasPrice': gasPrice,
+                        'nonce': nonce,
+                    })
+
+                    signed_txn = web3.eth.account.sign_transaction(contract_txn, private_key=private_key)
+                    tx_token = web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+                    if chain_selected == 'Arbitrum':
+                        cprint(f'\n>>> Swapping {i + 1}| https://arbiscan.io/tx/{web3.toHex(tx_token)} ', 'green')
+                        # Прроверяем, выполнена ли транзакция, и только после этого даем разрешение на следующую
+                        is_approve = web3.eth.wait_for_transaction_receipt(web3.toHex(tx_token), timeout=120,
+                                                                           poll_latency=0.1).status
+                        if is_approve == 0:
+                            cprint(
+                                f'\n>>> Transaction failed {i + 1}| https://polygonscan.com/tx/{web3.toHex(tx_token)} ',
+                                'red')
+                        time.sleep(random.randint(5, 10))
+
+                    elif chain_selected == 'Optimism':
+                        cprint(f'\n>>> Swapping {i + 1}| https://optimistic.etherscan.io/tx/{web3.toHex(tx_token)} ',
+                               'green')
+                        # Прроверяем, выполнена ли транзакция, и только после этого даем разрешение на следующую
+                        is_approve = web3.eth.wait_for_transaction_receipt(web3.toHex(tx_token), timeout=120,
+                                                                           poll_latency=0.1).status
+                        if is_approve == 0:
+                            cprint(
+                                f'\n>>> Transaction failed {i + 1}| https://polygonscan.com/tx/{web3.toHex(tx_token)} ',
+                                'red')
+                        time.sleep(random.randint(10, 20))
+
+                    elif chain_selected == 'Polygon':
+                        cprint(f'\n>>> Swapping {i + 1}| https://polygonscan.com/tx/{web3.toHex(tx_token)} ',
+                               'green')
+
+                        # Прроверяем, выполнена ли транзакция, и только после этого даем разрешение на следующую
+                        is_approve = web3.eth.wait_for_transaction_receipt(web3.toHex(tx_token), timeout=120,
+                                                                           poll_latency=0.1).status
+                        time.sleep(random.randint(5, 10))
+                        if is_approve == 0:
+                            cprint(
+                                f'\n>>> Transaction failed {i + 1}| https://polygonscan.com/tx/{web3.toHex(tx_token)} ',
+                                'red')
+                    else:
+                        cprint('\n>>> Укажите корректную сеть ', 'red')
+                except Exception as error:
+                    cprint(f'\n>>> Error with address | {address_wallet} | {error}', 'red')
         else:
-            try:
-                swap_staff_input = [str(usdc_aave_contract_address), ausdc_balance,
-                                    executor, byte_inputs_permit]
-                swap_staff_output = [str(usdc_contract_address), 1, str(address_wallet)]
-                contract_txn = contract.functions.swap(
-                    [swap_staff_input],
-                    [swap_staff_output],
-                    ausdc_balance,
-                    int(round(ausdc_balance * 0.996)),
-                    executor,
-                    path_AUSDC_USDC
-                ).buildTransaction({
-                    'from': address_wallet,
-                    'gas': gasLimit,
-                    'gasPrice': gasPrice,
-                    'nonce': nonce,
-                })
-
-                signed_txn = web3.eth.account.sign_transaction(contract_txn, private_key=private_key)
-                tx_token = web3.eth.send_raw_transaction(signed_txn.rawTransaction)
-                if chain_selected == 'Arbitrum':
-                    cprint(f'\n>>> Swapping {i + 1}| https://arbiscan.io/tx/{web3.toHex(tx_token)} ', 'green')
-                    time.sleep(random.randint(5, 10))
-                elif chain_selected == 'Optimism':
-                    cprint(f'\n>>> Swapping {i + 1}| https://optimistic.etherscan.io/tx/{web3.toHex(tx_token)} ',
-                           'green')
-                    time.sleep(random.randint(5, 10))
-                elif chain_selected == 'Polygon':
-                    cprint(f'\n>>> Swapping {i + 1}| https://polygonscan.com/tx/{web3.toHex(tx_token)} ',
-                           'green')
-                    time.sleep(random.randint(10, 20))
-                else:
-                    cprint('\n>>> Укажите корректную сеть ', 'red')
-            except Exception as error:
-                cprint(f'\n>>> Error with address | {address_wallet} | {error}', 'red')
+            cprint(f'\n>>> Одна из транзакций завершилась неудачно ', 'red')
 
 
 if __name__ == '__main__':
@@ -136,8 +185,8 @@ if __name__ == '__main__':
     elif chain_selected == 'Polygon':
         rpc = config.POL_RPC
         web3 = Web3(Web3.HTTPProvider(rpc))
-        gasLimit = 300000
-        gasPrice = web3.toWei('1000', 'gwei')
+        gasLimit = 3000000
+        gasPrice = web3.toWei('150', 'gwei')
         usdc_contract_address = config.pol_usdc_contract_address
         ucdc_contract = web3.eth.contract(usdc_contract_address, abi=config.ERC20_ABI)
         usdc_aave_contract_address = config.pol_usdc_aave_contract_address
@@ -158,28 +207,29 @@ if __name__ == '__main__':
 
     with open('private_keys.txt', 'r') as key:
         keys_list = [row.strip() for row in key]
+        is_approve = 0
 
         for private_key in keys_list:
             cprint(f'\n=============== start : {private_key} ===============', 'white')
             if chain_selected == 'Arbitrum':
-                pass
-                approve.usdc_arb_approve(private_key, gasLimit)
+                is_approve_usdc = approve.usdc_arb_approve(private_key, gasLimit)
                 time.sleep(random.randint(5, 15))
-                approve.usdc_aave_arb_approve(private_key, gasLimit)
+                is_approve_ausdc = approve.usdc_aave_arb_approve(private_key, gasLimit)
                 time.sleep(random.randint(5, 15))
             elif chain_selected == 'Optimism':
-                pass
-                approve.usdc_opt_approve(private_key, gasLimit)
+                is_approve_usdc = approve.usdc_opt_approve(private_key, gasLimit)
                 time.sleep(random.randint(5, 15))
-                approve.usdc_aave_opt_approve(private_key, gasLimit)
+                is_approve_ausdc = approve.usdc_aave_opt_approve(private_key, gasLimit)
                 time.sleep(random.randint(5, 15))
             elif chain_selected == 'Polygon':
-                pass
-                approve.usdc_pol_approve(private_key, gasLimit)
+                is_approve_usdc = approve.usdc_pol_approve(private_key, gasLimit)
                 time.sleep(random.randint(5, 15))
-                approve.usdc_aave_pol_approve(private_key, gasLimit)
-                time.sleep(random.randint(20, 30))
+                is_approve_ausdc = approve.usdc_aave_pol_approve(private_key, gasLimit)
+                time.sleep(random.randint(5, 10))
             else:
                 cprint('\n>>> Укажите корректную сеть ', 'red')
 
-            swap(swap_amount, chain_selected, odos_swap_contract, path_USDC_AUSDC, path_AUSDC_USDC, private_key, gasLimit, gasPrice)
+            is_approve = is_approve_usdc + is_approve_ausdc
+            if is_approve == 2:
+                swap(swap_amount, chain_selected, odos_swap_contract, path_USDC_AUSDC, path_AUSDC_USDC, private_key,
+                     gasLimit, gasPrice, is_approve)
